@@ -102,6 +102,9 @@
                         <a class="nav-link {{ request()->routeIs('buyer.domains.index') ? 'active' : '' }}" href="{{ route('buyer.domains.index') }}">
                             <i class="bi bi-list"></i> Мои домены
                         </a>
+                        <a class="nav-link {{ request()->routeIs('buyer.domains.pending-dns') ? 'active' : '' }}" href="{{ route('buyer.domains.pending-dns') }}">
+                            <i class="bi bi-exclamation-triangle"></i> Домены без DNS
+                        </a>
                         <a class="nav-link {{ request()->routeIs('buyer.domains.batches') ? 'active' : '' }}" href="{{ route('buyer.domains.batches') }}">
                             <i class="bi bi-collection"></i> Пакеты
                         </a>

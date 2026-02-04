@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Domain Management</title>
+    <title>Вход - Управление доменами</title>
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
         body {
@@ -26,8 +26,8 @@
                 <div class="card login-card">
                     <div class="card-body p-5">
                         <div class="text-center mb-4">
-                            <h3 class="fw-bold">Domain Management</h3>
-                            <p class="text-muted">Sign in to your account</p>
+                            <h3 class="fw-bold">Управление доменами</h3>
+                            <p class="text-muted">Войдите в свой аккаунт</p>
                         </div>
 
                         @if(session('error'))
@@ -47,7 +47,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
+                                <label for="password" class="form-label">Пароль</label>
                                 <input type="password" class="form-control @error('password') is-invalid @enderror"
                                        id="password" name="password" required>
                                 @error('password')
@@ -57,11 +57,11 @@
 
                             <div class="mb-3 form-check">
                                 <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                                <label class="form-check-label" for="remember">Remember me</label>
+                                <label class="form-check-label" for="remember">Запомнить меня</label>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-100 py-2">
-                                Sign In
+                                Войти
                             </button>
                         </form>
                     </div>

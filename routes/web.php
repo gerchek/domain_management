@@ -88,6 +88,8 @@ Route::prefix('buyer')->name('buyer.')->middleware(['auth', 'buyer'])->group(fun
     Route::get('/domains/batches', [DomainController::class, 'batches'])->name('domains.batches');
     Route::get('/domains/batch/{batch}', [DomainController::class, 'batch'])->name('domains.batch');
     Route::get('/domains/batch/{batch}/status', [DomainController::class, 'batchStatus'])->name('domains.batch.status');
+    Route::get('/domains/pending-dns', [DomainController::class, 'pendingDns'])->name('domains.pending-dns');
+    Route::post('/domains/retry-dns', [DomainController::class, 'retryDns'])->name('domains.retry-dns');
 
     // Sites generation
     Route::get('/sites', [SiteController::class, 'index'])->name('sites.index');

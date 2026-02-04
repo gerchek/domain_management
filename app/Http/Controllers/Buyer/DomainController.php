@@ -8,7 +8,10 @@ use App\Models\ActivityLog;
 use App\Models\Domain;
 use App\Models\DomainBatch;
 use App\Models\Server;
+use App\Models\Setting;
+use App\Services\DynadotService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class DomainController extends Controller
 {
@@ -201,5 +204,141 @@ class DomainController extends Controller
             ->paginate(20);
 
         return view('buyer.domains.batches', compact('batches'));
+    }
+
+    /**
+     * Показать домены без установленного DNS (статус purchased)
+     */
+    public function pendingDns(Request $request)
+    {
+        $user = auth()->user();
+
+        $query = $user->domains()
+            ->with('server')
+            ->where('status', 'purchased');
+
+        if ($request->filled('server_id')) {
+            $query->where('server_id', $request->server_id);
+        }
+
+        if ($request->filled('search')) {
+            $query->where('domain_name', 'like', '%' . $request->search . '%');
+        }
+
+        $domains = $query->latest()->paginate(50);
+        $servers = Server::active()->get();
+
+        // Считаем общее количество доменов без DNS
+        $totalPendingDns = $user->domains()->where('status', 'purchased')->count();
+
+        return view('buyer.domains.pending-dns', compact('domains', 'servers', 'totalPendingDns'));
+    }
+
+    /**
+     * Повторно установить DNS для выбранных доменов
+     */
+    public function retryDns(Request $request)
+    {
+        $request->validate([
+            'domain_ids' => ['required', 'array', 'min:1'],
+            'domain_ids.*' => ['required', 'integer', 'exists:domains,id'],
+        ]);
+
+        $user = auth()->user();
+        $domainIds = $request->domain_ids;
+
+        // Получаем домены пользователя со статусом purchased
+        $domains = Domain::whereIn('id', $domainIds)
+            ->where('buyer_id', $user->id)
+            ->where('status', 'purchased')
+            ->with('server')
+            ->get();
+
+        if ($domains->isEmpty()) {
+            return back()->with('error', 'Не найдено доменов для установки DNS');
+        }
+
+        // Группируем домены по серверам
+        $domainsByServer = $domains->groupBy('server_id');
+
+        $apiKey = Setting::get('dynadot_api_key');
+        if (!$apiKey) {
+            return back()->with('error', 'API ключ Dynadot не настроен');
+        }
+
+        $dynadotService = new DynadotService($apiKey);
+        $domainsPerRequest = (int) Setting::get('domains_per_request', 50);
+
+        $successCount = 0;
+        $failedCount = 0;
+        $errors = [];
+
+        foreach ($domainsByServer as $serverId => $serverDomains) {
+            $server = $serverDomains->first()->server;
+
+            if (!$server) {
+                foreach ($serverDomains as $domain) {
+                    $domain->update([
+                        'error_message' => 'Сервер не найден',
+                    ]);
+                    $failedCount++;
+                }
+                continue;
+            }
+
+            // Разбиваем на чанки
+            $chunks = $serverDomains->chunk($domainsPerRequest);
+
+            foreach ($chunks as $chunk) {
+                $domainNames = $chunk->pluck('domain_name')->toArray();
+
+                Log::info('Retrying DNS setup', [
+                    'domains' => $domainNames,
+                    'server_ip' => $server->ip_address,
+                ]);
+
+                $result = $dynadotService->setDns($domainNames, $server->ip_address);
+
+                if ($result['success']) {
+                    foreach ($chunk as $domain) {
+                        $domain->update([
+                            'status' => 'dns_set',
+                            'dns_set_at' => now(),
+                            'error_message' => null,
+                        ]);
+                        $successCount++;
+                    }
+
+                    ActivityLog::log('dns_retry_success', "DNS установлен для " . count($domainNames) . " доменов");
+                } else {
+                    foreach ($chunk as $domain) {
+                        $domain->update([
+                            'error_message' => $result['message'],
+                        ]);
+                        $failedCount++;
+                    }
+                    $errors[] = $result['message'];
+
+                    Log::warning('DNS retry failed', [
+                        'domains' => $domainNames,
+                        'error' => $result['message'],
+                    ]);
+                }
+
+                // Пауза между запросами к API
+                if ($chunks->count() > 1) {
+                    sleep(2);
+                }
+            }
+        }
+
+        if ($successCount > 0 && $failedCount > 0) {
+            return back()->with('warning', "DNS установлен для {$successCount} доменов. Ошибки: {$failedCount}");
+        } elseif ($successCount > 0) {
+            return back()->with('success', "DNS успешно установлен для {$successCount} доменов");
+        } else {
+            $errorMsg = implode('; ', array_unique($errors));
+            return back()->with('error', "Не удалось установить DNS. {$errorMsg}");
+        }
     }
 }
