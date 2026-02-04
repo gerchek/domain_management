@@ -1,0 +1,69 @@
+*.log
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/.qodo
+.phpactor.json
+.phpunit.result.cache
+
+# Dependencies
+/node_modules
+/vendor
+
+# Laravel storage
+/storage/*.key
+/storage/pail
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/app/private/*
+/storage/app/public/*
+!storage/logs/.gitkeep
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+!storage/app/private/.gitkeep
+!storage/app/public/.gitkeep
+
+# Build files
+/public/build
+/public/hot
+/public/storage
+
+# Auth
+/auth.json
+Homestead.json
+Homestead.yaml
+
+# User data files
+my_data.txt
+nul
+task.txt
+TASK_DETAILED.md
+
+# Node.js files (from other project)
+service.js
+isocodes.js
+/keys/
+/res/
+/temp/
+/archives/
+/assets/
+package.json
+package-lock.json
+
+# Composer
+composer.lock
