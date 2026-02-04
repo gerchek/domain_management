@@ -100,6 +100,7 @@ Route::prefix('buyer')->name('buyer.')->middleware(['auth', 'buyer'])->group(fun
     Route::get('/sites/{project}/status', [SiteController::class, 'status'])->name('sites.status');
     Route::delete('/sites/{project}', [SiteController::class, 'destroy'])->name('sites.destroy');
     Route::delete('/sites/deployment/{deployment}', [SiteController::class, 'destroyDeployment'])->name('sites.deployment.destroy');
+    Route::post('/sites/deployment/{deployment}/retry-ssl', [SiteController::class, 'retrySsl'])->name('sites.deployment.retry-ssl');
 
     // Domain Deployments (Black/White sites)
     Route::get('/domain-deployments', [DomainDeploymentController::class, 'index'])->name('domain-deployments.index');

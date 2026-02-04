@@ -246,6 +246,37 @@ class SiteController extends Controller
     }
 
     /**
+     * Повторно установить SSL для деплоя
+     */
+    public function retrySsl(SiteDeployment $deployment, DeployService $deployService)
+    {
+        $project = $deployment->project;
+
+        if ($project->buyer_id !== auth()->id()) {
+            abort(403);
+        }
+
+        // Проверяем что деплой завершён (можно устанавливать SSL)
+        if (!in_array($deployment->status, ['completed', 'failed'])) {
+            return back()->with('error', 'SSL можно установить только для завершённых деплоев');
+        }
+
+        // Проверяем что SSL ещё не установлен
+        if ($deployment->ssl_installed) {
+            return back()->with('info', 'SSL уже установлен для этого домена');
+        }
+
+        $result = $deployService->retrySsl($deployment);
+
+        if ($result['success']) {
+            $deployment->update(['ssl_installed' => true]);
+            return back()->with('success', $result['message']);
+        }
+
+        return back()->with('error', $result['message']);
+    }
+
+    /**
      * Рекурсивное удаление директории
      */
     private function deleteDirectory(string $dir): void

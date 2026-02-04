@@ -163,6 +163,14 @@
                                     <span class="badge bg-success"><i class="bi bi-shield-check"></i></span>
                                 @else
                                     <span class="badge bg-secondary"><i class="bi bi-shield"></i></span>
+                                    @if(in_array($deployment->status, ['completed', 'failed']))
+                                        <form action="{{ route('buyer.sites.deployment.retry-ssl', $deployment) }}" method="POST" class="d-inline ms-1">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-success retry-ssl-btn" title="Установить SSL">
+                                                <i class="bi bi-shield-plus"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
                             </td>
                             <td class="deployment-date">
@@ -282,6 +290,15 @@ function disableButton(form) {
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-hourglass-split spin"></i>';
 }
+
+// SSL retry button handling
+document.querySelectorAll('.retry-ssl-btn').forEach(btn => {
+    btn.closest('form').addEventListener('submit', function(e) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split spin"></i>';
+        showDeleteOverlay('Установка SSL сертификата...');
+    });
+});
 </script>
 @endpush
 

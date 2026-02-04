@@ -897,6 +897,60 @@ PHP;
     }
 
     /**
+     * Retry SSL installation for a deployment
+     * Checks if certificate exists on server, if not - installs it
+     */
+    public function retrySsl(SiteDeployment $deployment): array
+    {
+        $domain = $deployment->domain;
+        $server = $domain->server;
+
+        if (!$server) {
+            return [
+                'success' => false,
+                'message' => 'Сервер для домена не найден',
+            ];
+        }
+
+        try {
+            $domainName = $domain->domain_name;
+
+            Log::info('Retrying SSL installation', ['domain' => $domainName]);
+
+            // Use existing setupSsl method
+            $sslInstalled = $this->setupSsl($domainName, $server);
+
+            if ($sslInstalled) {
+                return [
+                    'success' => true,
+                    'message' => 'SSL сертификат успешно установлен',
+                    'ssl_installed' => true,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Не удалось установить SSL. Проверьте что DNS домена указывает на сервер.',
+                'ssl_installed' => false,
+            ];
+
+        } catch (\Exception $e) {
+            $this->disconnect();
+
+            Log::error('SSL retry error', [
+                'domain' => $domain->domain_name,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'ssl_installed' => false,
+            ];
+        }
+    }
+
+    /**
      * Update only black site config files (without reinstalling)
      * - Updates newspage/index.php with new Keitaro config
      * - Does NOT update Palladium config (read-only after deployment)

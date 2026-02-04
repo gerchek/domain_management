@@ -158,6 +158,10 @@ docker compose exec app php artisan db:seed
 # Перезапустить queue
 docker compose restart queue
 
+# Установить права доступа
+docker compose exec app chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+docker compose exec app chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
 # Оптимизировать для продакшена
 docker compose exec app php artisan config:cache
 docker compose exec app php artisan route:cache
@@ -336,6 +340,10 @@ docker compose exec app composer install --optimize-autoloader --no-dev
 # Выполнить новые миграции
 docker compose exec app php artisan migrate --force
 
+# Исправить права доступа
+docker compose exec app chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+docker compose exec app chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
 # Очистить и пересоздать кэш
 docker compose exec app php artisan optimize:clear
 docker compose exec app php artisan config:cache
@@ -480,3 +488,24 @@ docker compose exec mysql mysql -u root -p<PASSWORD> <DB_NAME> -e "TRUNCATE TABL
 1. Домен указывает на сервер
 2. Порт 80 и 443 открыты в firewall
 3. Путь к сертификатам правильный в nginx конфиге
+
+### Ошибка "Permission denied" для storage
+
+Если появляется ошибка:
+```
+file_put_contents(/var/www/storage/framework/views/...): Failed to open stream: Permission denied
+```
+
+Исправить права доступа:
+```bash
+docker compose exec app chown -R www-data:www-data /var/www/storage
+docker compose exec app chmod -R 775 /var/www/storage
+docker compose exec app chown -R www-data:www-data /var/www/bootstrap/cache
+docker compose exec app chmod -R 775 /var/www/bootstrap/cache
+```
+
+После этого очистить кэш:
+```bash
+docker compose exec app php artisan view:clear
+docker compose exec app php artisan view:cache
+```
