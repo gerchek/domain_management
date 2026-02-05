@@ -15,11 +15,19 @@ class ChatGptService
 
     // Лимиты токенов для разных моделей
     protected array $modelMaxTokens = [
+        'gpt-5' => 16384,
         'gpt-4o' => 16384,
         'gpt-4o-mini' => 16384,
         'gpt-4-turbo' => 4096,
         'gpt-4' => 4096,
         'gpt-3.5-turbo' => 4096,
+    ];
+
+    // Модели, которые используют max_completion_tokens вместо max_tokens
+    protected array $useCompletionTokensParam = [
+        'gpt-5',
+        'gpt-4o',
+        'gpt-4o-mini',
     ];
 
     public function __construct()
@@ -54,26 +62,34 @@ class ChatGptService
         Log::info('ChatGPT request starting', ['model' => $this->model]);
 
         try {
+            $requestBody = [
+                'model' => $this->model,
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => $systemPrompt,
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $promptText,
+                    ],
+                ],
+                'temperature' => 0.7,
+            ];
+
+            // Новые модели используют max_completion_tokens вместо max_tokens
+            if (in_array($this->model, $this->useCompletionTokensParam)) {
+                $requestBody['max_completion_tokens'] = $this->getMaxTokens();
+            } else {
+                $requestBody['max_tokens'] = $this->getMaxTokens();
+            }
+
             $response = Http::timeout(180)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
                     'Content-Type' => 'application/json',
                 ])
-                ->post($this->baseUrl, [
-                    'model' => $this->model,
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => $systemPrompt,
-                        ],
-                        [
-                            'role' => 'user',
-                            'content' => $promptText,
-                        ],
-                    ],
-                    'max_tokens' => $this->getMaxTokens(),
-                    'temperature' => 0.7,
-                ]);
+                ->post($this->baseUrl, $requestBody);
 
             if (!$response->successful()) {
                 Log::error('ChatGPT API error', [
