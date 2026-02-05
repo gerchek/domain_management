@@ -121,6 +121,9 @@ class ChatGptService
             Log::info('ChatGPT response received', [
                 'tokens_used' => $data['usage'] ?? [],
                 'content_length' => strlen($content),
+                'raw_response_keys' => array_keys($data),
+                'message_keys' => isset($data['choices'][0]['message']) ? array_keys($data['choices'][0]['message']) : [],
+                'full_message' => $data['choices'][0]['message'] ?? null,
             ]);
 
             // Парсим ответ в файлы
