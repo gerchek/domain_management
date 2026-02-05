@@ -74,14 +74,18 @@ class ChatGptService
                         'content' => $promptText,
                     ],
                 ],
-                'temperature' => 0.7,
             ];
 
-            // Новые модели используют max_completion_tokens вместо max_tokens
+            // Новые модели используют max_completion_tokens и не поддерживают temperature
             if (in_array($this->model, $this->useCompletionTokensParam)) {
                 $requestBody['max_completion_tokens'] = $this->getMaxTokens();
+                // gpt-5 не поддерживает temperature, остальные поддерживают
+                if ($this->model !== 'gpt-5') {
+                    $requestBody['temperature'] = 0.7;
+                }
             } else {
                 $requestBody['max_tokens'] = $this->getMaxTokens();
+                $requestBody['temperature'] = 0.7;
             }
 
             $response = Http::timeout(180)
