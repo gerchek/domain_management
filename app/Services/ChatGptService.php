@@ -13,9 +13,9 @@ class ChatGptService
     protected string $model;
     protected string $baseUrl = 'https://api.openai.com/v1/chat/completions';
 
-    // Лимиты токенов для разных моделей
+    // Лимиты токенов для разных моделей (null = без лимита)
     protected array $modelMaxTokens = [
-        'gpt-5' => 16384,
+        'gpt-5' => null,   // Reasoning модель - без лимита
         'gpt-4o' => 16384,
         'gpt-4o-mini' => 16384,
         'gpt-4-turbo' => 4096,
@@ -39,7 +39,7 @@ class ChatGptService
     /**
      * Получить максимальное количество токенов для текущей модели
      */
-    protected function getMaxTokens(): int
+    protected function getMaxTokens(): ?int
     {
         return $this->modelMaxTokens[$this->model] ?? 4096;
     }
@@ -77,14 +77,21 @@ class ChatGptService
             ];
 
             // Новые модели используют max_completion_tokens и не поддерживают temperature
+            $maxTokens = $this->getMaxTokens();
+
             if (in_array($this->model, $this->useCompletionTokensParam)) {
-                $requestBody['max_completion_tokens'] = $this->getMaxTokens();
+                // Добавляем лимит только если он задан
+                if ($maxTokens !== null) {
+                    $requestBody['max_completion_tokens'] = $maxTokens;
+                }
                 // gpt-5 не поддерживает temperature, остальные поддерживают
                 if ($this->model !== 'gpt-5') {
                     $requestBody['temperature'] = 0.7;
                 }
             } else {
-                $requestBody['max_tokens'] = $this->getMaxTokens();
+                if ($maxTokens !== null) {
+                    $requestBody['max_tokens'] = $maxTokens;
+                }
                 $requestBody['temperature'] = 0.7;
             }
 
