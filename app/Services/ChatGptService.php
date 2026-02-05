@@ -88,7 +88,7 @@ class ChatGptService
                 $requestBody['temperature'] = 0.7;
             }
 
-            $response = Http::timeout(180)
+            $response = Http::timeout(900)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
                     'Content-Type' => 'application/json',
