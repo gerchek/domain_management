@@ -332,12 +332,18 @@ class DomainDeploymentController extends Controller
         $domain = $deployment->domain;
         $server = $domain->server;
 
-        // Remove only black site components from server (keep white site intact)
-        if ($server && $deployment->isDeployed()) {
+        // Remove black site components from server for any non-pending status
+        // This handles both deployed and failed deployments that may have partial changes
+        if ($server && in_array($deployment->status, ['deployed', 'failed', 'deploying'])) {
             $result = $deployService->removeBlackSite($domain->domain_name, $server);
 
+            // Log but don't block deletion if cleanup fails
             if (!$result['success']) {
-                return back()->with('error', 'Ошибка удаления black сайта: ' . $result['message']);
+                \Log::warning('Failed to cleanup black site on delete', [
+                    'deployment_id' => $deployment->id,
+                    'domain' => $domain->domain_name,
+                    'error' => $result['message'],
+                ]);
             }
         }
 

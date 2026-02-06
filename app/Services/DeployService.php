@@ -205,19 +205,23 @@ class DeployService
             throw new \Exception('Файлы проекта не найдены в хранилище');
         }
 
+        // Получаем имя домена из пути
+        $domainName = basename($domainPath);
+
         $targetPath = $domainPath . '/public_html';
-        $this->uploadDirectory($localBasePath, $targetPath);
+        $this->uploadDirectory($localBasePath, $targetPath, $domainName);
 
         Log::info('Site files uploaded', [
             'from' => $localBasePath,
             'to' => $targetPath,
+            'domain' => $domainName,
         ]);
     }
 
     /**
-     * Recursively upload directory
+     * Recursively upload directory with domain placeholder replacement
      */
-    protected function uploadDirectory(string $localPath, string $remotePath): void
+    protected function uploadDirectory(string $localPath, string $remotePath, string $domainName): void
     {
         $files = scandir($localPath);
 
@@ -231,9 +235,13 @@ class DeployService
 
             if (is_dir($localFilePath)) {
                 $this->sftp->mkdir($remoteFilePath, 0755, true);
-                $this->uploadDirectory($localFilePath, $remoteFilePath);
+                $this->uploadDirectory($localFilePath, $remoteFilePath, $domainName);
             } else {
                 $content = file_get_contents($localFilePath);
+
+                // Заменяем {domain} на реальное имя домена
+                $content = str_replace('{domain}', $domainName, $content);
+
                 $this->sftp->put($remoteFilePath, $content);
             }
         }
@@ -663,17 +671,46 @@ PHP;
 
         if (strpos($checkResult, 'NOT_EXISTS') !== false) {
             // mainpage.php doesn't exist - rename original index.php to mainpage.php
-            $renameCmd = "cd {$safePublicPath} && if [ -f index.php ]; then mv index.php mainpage.php; fi";
-            $this->sftp->exec($renameCmd);
+            // First check if index.php exists
+            $indexExists = trim($this->sftp->exec("cd {$safePublicPath} && test -f index.php && echo 'YES' || echo 'NO'"));
             $this->sftp->reset();
 
-            // Also handle index.html
-            $renameHtmlCmd = "cd {$safePublicPath} && if [ -f index.html ]; then mv index.html mainpage.html; fi";
-            $this->sftp->exec($renameHtmlCmd);
-            $this->sftp->reset();
+            if (strpos($indexExists, 'YES') !== false) {
+                $deployment->addLog('info', 'Переименование index.php -> mainpage.php (сохранение white сайта)...');
 
-            Log::info('Renamed original index to mainpage', ['path' => $publicHtmlPath]);
+                // Rename index.php to mainpage.php
+                $this->sftp->exec("cd {$safePublicPath} && mv index.php mainpage.php");
+                $this->sftp->reset();
+
+                // VERIFY the rename succeeded
+                $verifyResult = trim($this->sftp->exec("cd {$safePublicPath} && test -f mainpage.php && echo 'SUCCESS' || echo 'FAILED'"));
+                $this->sftp->reset();
+
+                if (strpos($verifyResult, 'SUCCESS') === false) {
+                    $deployment->addLog('error', 'ОШИБКА: mainpage.php не создан после переименования!');
+                    throw new \Exception('Не удалось переименовать index.php в mainpage.php - white сайт будет потерян');
+                }
+
+                $deployment->addLog('success', 'White сайт сохранён как mainpage.php');
+                Log::info('Renamed original index.php to mainpage.php', ['path' => $publicHtmlPath]);
+            } else {
+                // Check for index.html
+                $indexHtmlExists = trim($this->sftp->exec("cd {$safePublicPath} && test -f index.html && echo 'YES' || echo 'NO'"));
+                $this->sftp->reset();
+
+                if (strpos($indexHtmlExists, 'YES') !== false) {
+                    $deployment->addLog('info', 'Переименование index.html -> mainpage.html...');
+                    $this->sftp->exec("cd {$safePublicPath} && mv index.html mainpage.html");
+                    $this->sftp->reset();
+                    $deployment->addLog('success', 'White сайт сохранён как mainpage.html');
+                    Log::info('Renamed original index.html to mainpage.html', ['path' => $publicHtmlPath]);
+                } else {
+                    $deployment->addLog('warning', 'index.php/index.html не найден - возможно white сайт отсутствует');
+                    Log::warning('No index.php or index.html found to rename', ['path' => $publicHtmlPath]);
+                }
+            }
         } else {
+            $deployment->addLog('info', 'mainpage.php уже существует, white сайт сохранён');
             Log::info('mainpage.php already exists, skipping rename (white site preserved)', ['path' => $publicHtmlPath]);
         }
 

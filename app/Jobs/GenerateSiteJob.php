@@ -48,7 +48,7 @@ class GenerateSiteJob implements ShouldQueue
             $result = $chatGptService->generateSiteCode($prompt->prompt_text);
 
             if (!$result['success']) {
-                throw new \Exception('Генерация ChatGPT не удалась: ' . $result['message']);
+                throw new \Exception('ChatGPT: ' . $result['message']);
             }
 
             $files = $result['files'];
@@ -93,7 +93,7 @@ class GenerateSiteJob implements ShouldQueue
                 ->where('status', 'pending')
                 ->update([
                     'status' => 'failed',
-                    'error_message' => 'Генерация проекта не удалась: ' . $e->getMessage(),
+                    'error_message' => $e->getMessage(),
                 ]);
         }
     }

@@ -502,6 +502,9 @@ docker compose exec app chown -R www-data:www-data /var/www/storage
 docker compose exec app chmod -R 775 /var/www/storage
 docker compose exec app chown -R www-data:www-data /var/www/bootstrap/cache
 docker compose exec app chmod -R 775 /var/www/bootstrap/cache
+
+docker compose exec app bash -c "chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache   && chmod -R 775 /var/www/storage /var/www/bootstrap/cache && php artisan view:clear && php artisan view:cache" 
+
 ```
 
 После этого очистить кэш:
@@ -509,3 +512,5 @@ docker compose exec app chmod -R 775 /var/www/bootstrap/cache
 docker compose exec app php artisan view:clear
 docker compose exec app php artisan view:cache
 ```
+
+

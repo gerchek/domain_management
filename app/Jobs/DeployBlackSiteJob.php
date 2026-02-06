@@ -55,6 +55,9 @@ class DeployBlackSiteJob implements ShouldQueue
                 'tracking_type' => $trackingType,
             ]);
         } else {
+            // Cleanup partial changes on failure
+            $this->cleanupOnFailure($deployService);
+
             $this->deployment->markAsFailed($result['message']);
 
             Log::error('DeployBlackSiteJob failed', [
@@ -72,6 +75,48 @@ class DeployBlackSiteJob implements ShouldQueue
             'error' => $exception->getMessage(),
         ]);
 
+        // Cleanup partial changes on exception
+        try {
+            $deployService = app(DeployService::class);
+            $this->cleanupOnFailure($deployService);
+        } catch (\Exception $e) {
+            Log::warning('Failed to cleanup after job exception', [
+                'deployment_id' => $this->deployment->id,
+                'cleanup_error' => $e->getMessage(),
+            ]);
+        }
+
         $this->deployment->markAsFailed($exception->getMessage());
+    }
+
+    /**
+     * Cleanup partial black site changes when deployment fails
+     */
+    protected function cleanupOnFailure(DeployService $deployService): void
+    {
+        $domain = $this->deployment->domain;
+        $server = $domain->server;
+
+        if (!$server) {
+            return;
+        }
+
+        try {
+            $result = $deployService->removeBlackSite($domain->domain_name, $server);
+
+            if ($result['success']) {
+                $this->deployment->addLog('info', 'Откат изменений выполнен');
+                Log::info('Black site cleanup after failure completed', [
+                    'deployment_id' => $this->deployment->id,
+                    'domain' => $domain->domain_name,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Black site cleanup after failure failed', [
+                'deployment_id' => $this->deployment->id,
+                'domain' => $domain->domain_name,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

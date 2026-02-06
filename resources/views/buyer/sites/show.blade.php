@@ -180,9 +180,9 @@
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
-                            <td class="deployment-error">
+                            <td class="deployment-error" style="max-width: 300px;">
                                 @if($deployment->error_message)
-                                    <span class="text-danger small">{{ Str::limit($deployment->error_message, 50) }}</span>
+                                    <div class="text-danger small error-text-wrap">{{ $deployment->error_message }}</div>
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
@@ -220,6 +220,13 @@
 .spin {
     display: inline-block;
     animation: spin 1s linear infinite;
+}
+.error-text-wrap {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.4;
+    max-height: 80px;
+    overflow-y: auto;
 }
 .delete-overlay {
     position: fixed;
@@ -363,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Error
                         const errorCell = row.querySelector('.deployment-error');
                         if (dep.error_message) {
-                            errorCell.innerHTML = `<span class="text-danger small">${dep.error_message.substring(0, 50)}</span>`;
+                            errorCell.innerHTML = `<div class="text-danger small error-text-wrap">${dep.error_message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
                         }
                     }
                 });
